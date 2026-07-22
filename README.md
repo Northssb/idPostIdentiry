@@ -14,12 +14,20 @@
 
 ## 运行环境
 
-- Python 3.10 或更高版本。
+- Python 3.9 或更高版本。
 - macOS：使用系统 Vision OCR，需要系统已安装 Command Line Tools，可通过 `xcode-select -p` 检查。
 - Windows/Linux：使用本机 Tesseract，需要 `tesseract` 命令位于 `PATH`，并已安装 `chi_sim` 和 `eng` 语言包。
 - 项目不需要安装第三方 Python 包。
 
 ## 使用方法
+
+直接运行且不填写参数时，macOS 会依次弹出身份证图片文件夹和 Excel 导出文件夹选择框：
+
+```shell
+/usr/bin/python3 id_card_ocr.py
+```
+
+也可以通过命令行直接指定文件夹：
 
 ```shell
 python3 id_card_ocr.py \
