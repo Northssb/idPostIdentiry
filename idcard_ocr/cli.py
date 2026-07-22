@@ -34,7 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _print_progress(current: int, total: int, status: str) -> None:
     category = "成功"
-    if status.startswith("失败"):
+    if status == "成功（增强重试）":
+        category = status
+    elif status.startswith("失败"):
         category = "失败"
     elif status.startswith("重复"):
         category = "重复"
@@ -105,7 +107,7 @@ def main(
         export_xlsx(target, rows)
         print(
             f"处理完成：扫描 {summary.scanned}，成功 {summary.succeeded}，"
-            f"失败 {summary.failed}，重复 {summary.duplicated}"
+            f"其中增强重试成功 {summary.retried}，失败 {summary.failed}，重复 {summary.duplicated}"
         )
         print(f"Excel 已导出：{target}")
         return 2 if summary.failed or summary.duplicated else 0

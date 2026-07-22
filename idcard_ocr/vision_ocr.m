@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
 #import <Vision/Vision.h>
+#include <string.h>
 
 static CIVector *ScaledPoint(CGPoint normalized, CGRect extent) {
     return [CIVector vectorWithX:extent.origin.x + normalized.x * extent.size.width
@@ -30,6 +31,21 @@ static CIImage *CorrectPerspective(CIImage *image) {
     [filter setValue:ScaledPoint(rectangle.bottomLeft, image.extent) forKey:@"inputBottomLeft"];
     [filter setValue:ScaledPoint(rectangle.bottomRight, image.extent) forKey:@"inputBottomRight"];
     return filter.outputImage ?: image;
+}
+
+static CIImage *EnhanceImage(CIImage *image) {
+    CIFilter *color = [CIFilter filterWithName:@"CIColorControls"];
+    [color setValue:image forKey:kCIInputImageKey];
+    [color setValue:@0.0 forKey:kCIInputSaturationKey];
+    [color setValue:@1.45 forKey:kCIInputContrastKey];
+    [color setValue:@0.04 forKey:kCIInputBrightnessKey];
+    CIImage *adjusted = color.outputImage ?: image;
+
+    CIFilter *sharpen = [CIFilter filterWithName:@"CIUnsharpMask"];
+    [sharpen setValue:adjusted forKey:kCIInputImageKey];
+    [sharpen setValue:@2.5 forKey:kCIInputRadiusKey];
+    [sharpen setValue:@0.8 forKey:kCIInputIntensityKey];
+    return sharpen.outputImage ?: adjusted;
 }
 
 static NSArray<NSString *> *Recognize(CIImage *image) {
@@ -65,7 +81,11 @@ static NSInteger Score(NSArray<NSString *> *lines) {
 
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
-        if (argc != 2) {
+        if (argc < 2 || argc > 3) {
+            return 1;
+        }
+        BOOL enhanced = argc == 3 && strcmp(argv[2], "--enhanced") == 0;
+        if (argc == 3 && !enhanced) {
             return 1;
         }
         NSString *path = [NSString stringWithUTF8String:argv[1]];
@@ -85,7 +105,9 @@ int main(int argc, const char *argv[]) {
         NSInteger bestScore = NSIntegerMin;
         for (NSNumber *orientation in orientations) {
             CIImage *rotated = [original imageByApplyingOrientation:orientation.intValue];
-            NSArray<NSString *> *lines = Recognize(CorrectPerspective(rotated));
+            CIImage *corrected = CorrectPerspective(rotated);
+            CIImage *candidate = enhanced ? EnhanceImage(corrected) : corrected;
+            NSArray<NSString *> *lines = Recognize(candidate);
             NSInteger candidateScore = Score(lines);
             if (candidateScore > bestScore) {
                 bestScore = candidateScore;

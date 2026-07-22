@@ -9,7 +9,13 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .core import IdCardOcrError, OcrResult
+from .core import (
+    IdCardOcrError,
+    OcrResult,
+    normalize_id_number,
+    normalize_name,
+    validate_id_number,
+)
 
 
 class OcrInitializationError(IdCardOcrError):
@@ -41,6 +47,12 @@ def extract_fields(text: str) -> OcrResult:
     match = re.search(r"(?<!\d)\d{17}[0-9Xx](?![0-9Xx])", compact)
     id_number = match.group(0) if match is not None else ""
     return OcrResult(name, id_number)
+
+
+def _is_usable(result: OcrResult) -> bool:
+    name = normalize_name(result.name)
+    id_number = normalize_id_number(result.id_number)
+    return bool(name) and validate_id_number(id_number)
 
 
 class MacOSVisionBackend:
@@ -84,10 +96,13 @@ class MacOSVisionBackend:
             self.close()
             raise OcrInitializationError("无法编译 macOS Vision OCR 组件，请检查 Command Line Tools")
 
-    def recognize(self, path: Path) -> OcrResult:
+    def _invoke(self, path: Path, enhanced: bool) -> OcrResult:
+        command = [str(self._executable), str(path)]
+        if enhanced:
+            command.append("--enhanced")
         try:
             completed = subprocess.run(
-                [str(self._executable), str(path)],
+                command,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -104,7 +119,25 @@ class MacOSVisionBackend:
             text = payload["text"]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise OcrRecognitionError("图片处理失败") from exc
-        return extract_fields(text)
+        result = extract_fields(text)
+        return OcrResult(result.name, result.id_number, "enhanced" if enhanced else "standard")
+
+    def recognize(self, path: Path) -> OcrResult:
+        standard_result: OcrResult | None = None
+        try:
+            raw_standard = self._invoke(path, False)
+            standard_result = OcrResult(raw_standard.name, raw_standard.id_number, "standard")
+            if _is_usable(standard_result):
+                return standard_result
+        except OcrRecognitionError:
+            pass
+        try:
+            enhanced_result = self._invoke(path, True)
+            return OcrResult(enhanced_result.name, enhanced_result.id_number, "enhanced")
+        except OcrRecognitionError:
+            if standard_result is not None:
+                return standard_result
+            raise
 
     def close(self) -> None:
         temporary_directory = getattr(self, "_temporary_directory", None)
@@ -131,10 +164,10 @@ class TesseractBackend:
         if completed.returncode != 0 or "chi_sim" not in languages or "eng" not in languages:
             raise OcrInitializationError("Tesseract 必须安装 chi_sim 和 eng 本地语言包")
 
-    def recognize(self, path: Path) -> OcrResult:
+    def _invoke(self, path: Path, page_mode: str, strategy: str) -> OcrResult:
         try:
             completed = subprocess.run(
-                [self._executable, str(path), "stdout", "-l", "chi_sim+eng", "--psm", "1"],
+                [self._executable, str(path), "stdout", "-l", "chi_sim+eng", "--psm", page_mode],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -146,7 +179,25 @@ class TesseractBackend:
             raise OcrRecognitionError("图片处理失败") from exc
         if completed.returncode != 0:
             raise OcrRecognitionError("图片处理失败")
-        return extract_fields(completed.stdout)
+        result = extract_fields(completed.stdout)
+        return OcrResult(result.name, result.id_number, strategy)
+
+    def recognize(self, path: Path) -> OcrResult:
+        standard_result: OcrResult | None = None
+        try:
+            raw_standard = self._invoke(path, "1", "standard")
+            standard_result = OcrResult(raw_standard.name, raw_standard.id_number, "standard")
+            if _is_usable(standard_result):
+                return standard_result
+        except OcrRecognitionError:
+            pass
+        try:
+            enhanced_result = self._invoke(path, "6", "enhanced")
+            return OcrResult(enhanced_result.name, enhanced_result.id_number, "enhanced")
+        except OcrRecognitionError:
+            if standard_result is not None:
+                return standard_result
+            raise
 
     def close(self) -> None:
         return None
