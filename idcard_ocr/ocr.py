@@ -38,6 +38,7 @@ def extract_fields(text: str) -> OcrResult:
             name = candidate
         elif index + 1 < len(lines):
             name = lines[index + 1].strip()
+        name = re.split(r"性\s*别|民\s*族|出\s*生|住\s*址|公民身份号码", name, maxsplit=1)[0].strip()
         compact_name = "".join(name.split())
         if compact_name.startswith(("性别", "民族", "出生", "住址", "公民身份号码")):
             name = ""
