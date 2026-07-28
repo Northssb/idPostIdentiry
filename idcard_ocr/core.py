@@ -236,7 +236,14 @@ def _worksheet_xml(rows: Iterable[object]) -> bytes:
         values = row.as_tuple()
         sheet_rows.append(
             f'<row r="{last_row}">'
-            + "".join(_inline_cell(f"{column}{last_row}", str(value)) for column, value in zip("ABCD", values))
+            + "".join(
+                _inline_cell(
+                    f"{column}{last_row}",
+                    str(value),
+                    2 if column == "C" else None,
+                )
+                for column, value in zip("ABCD", values)
+            )
             + "</row>"
         )
     xml = (
@@ -353,8 +360,9 @@ def export_xlsx(target: Path, rows: Iterable[object]) -> None:
                 '<fill><patternFill patternType="gray125"/></fill></fills>'
                 '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
                 '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-                '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-                '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+                '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+                '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+                '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>'
                 '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
                 '</styleSheet>',
             )
