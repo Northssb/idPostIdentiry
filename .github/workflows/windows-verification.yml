@@ -1,0 +1,89 @@
+name: 临时 Windows 身份证识别验证
+
+on:
+  push:
+    branches:
+      - feature/planSeetting-2026-07-22
+
+jobs:
+  verify-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装本地 Tesseract
+        shell: powershell
+        run: |
+          choco install tesseract --yes --no-progress
+          $install = "C:\Program Files\Tesseract-OCR"
+          $tessdata = Join-Path $install "tessdata"
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/chi_sim.traineddata" `
+            -OutFile (Join-Path $tessdata "chi_sim.traineddata")
+          $install | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: 生成正常和180度模拟身份证图片
+        shell: powershell
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          New-Item -ItemType Directory -Force "测试 输入 空格\正常" | Out-Null
+          New-Item -ItemType Directory -Force "测试 输入 空格\旋转180" | Out-Null
+
+          $bitmap = New-Object System.Drawing.Bitmap 1800, 1100
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.Clear([System.Drawing.Color]::White)
+          $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+          $titleFont = New-Object System.Drawing.Font "Microsoft YaHei", 76, ([System.Drawing.FontStyle]::Bold)
+          $bodyFont = New-Object System.Drawing.Font "Microsoft YaHei", 64
+          $brush = [System.Drawing.Brushes]::Black
+          $graphics.DrawString("中华人民共和国居民身份证", $titleFont, $brush, 150, 120)
+          $graphics.DrawString("姓名  赵安林", $bodyFont, $brush, 180, 350)
+          $graphics.DrawString("公民身份号码  990000198008120011", $bodyFont, $brush, 180, 720)
+          $normalPath = Join-Path $PWD "测试 输入 空格\正常\身份证 正面.JPG"
+          $bitmap.Save($normalPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+          $graphics.Dispose()
+          $titleFont.Dispose()
+          $bodyFont.Dispose()
+          $bitmap.Dispose()
+
+          $rotated = [System.Drawing.Image]::FromFile($normalPath)
+          $rotated.RotateFlip([System.Drawing.RotateFlipType]::Rotate180FlipNone)
+          $rotated.Save(
+            (Join-Path $PWD "测试 输入 空格\旋转180\身份证 旋转180.JPG"),
+            [System.Drawing.Imaging.ImageFormat]::Jpeg
+          )
+          $rotated.Dispose()
+
+      - name: 验证正常方向识别和 Excel 文本格式
+        shell: powershell
+        run: |
+          $env:IDCARD_OCR_BACKEND = "tesseract"
+          python id_card_ocr.py `
+            --input-dir "测试 输入 空格\正常" `
+            --output-dir "测试 输出 空格\正常" `
+            --output-name "识别结果.xlsx"
+          if ($LASTEXITCODE -ne 0) {
+            throw "正常方向识别退出码不是0：$LASTEXITCODE"
+          }
+          python -c "import zipfile; p=r'测试 输出 空格\正常\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); w=z.read('xl/workbook.xml').decode(); assert '赵安林' in s; assert '990000198008120011' in s; assert 'r=\"C2\" t=\"inlineStr\" s=\"2\"' in s; assert '识别结果' in w and '待人工复核' in w; print('WINDOWS_NORMAL_XLSX_OK')"
+
+      - name: 验证180度方向兜底
+        shell: powershell
+        run: |
+          $env:IDCARD_OCR_BACKEND = "tesseract"
+          python id_card_ocr.py `
+            --input-dir "测试 输入 空格\旋转180" `
+            --output-dir "测试 输出 空格\旋转180" `
+            --output-name "识别结果.xlsx"
+          if ($LASTEXITCODE -ne 0) {
+            throw "180度方向识别退出码不是0：$LASTEXITCODE"
+          }
+          python -c "import zipfile; p=r'测试 输出 空格\旋转180\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); assert '赵安林' in s; assert '990000198008120011' in s; assert '成功（增强重试）' in s; print('WINDOWS_ROTATE180_XLSX_OK')"
