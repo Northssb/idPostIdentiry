@@ -23,6 +23,18 @@ class CommandArgumentParser(argparse.ArgumentParser):
         raise InputPathError(f"命令行参数错误：{message}")
 
 
+def _configure_console_encoding() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if encoding == "utf8" or not callable(reconfigure):
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (OSError, ValueError):
+            continue
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = CommandArgumentParser(description="本地离线批量识别身份证正面图片并导出 Excel")
     parser.add_argument("--input-dir", required=True, type=Path, help="身份证图片根文件夹")
@@ -79,6 +91,7 @@ def main(
     backend_factory: Callable[[], object] = create_ocr_backend,
     directory_selector: Callable[[], tuple[Path, Path]] = select_directories,
 ) -> int:
+    _configure_console_encoding()
     parser = build_parser()
     try:
         argument_list = list(sys.argv[1:] if argv is None else argv)
