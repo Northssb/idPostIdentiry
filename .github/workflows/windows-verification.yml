@@ -37,12 +37,16 @@ jobs:
           New-Item -ItemType Directory -Force "测试 输入 空格\正常" | Out-Null
           New-Item -ItemType Directory -Force "测试 输入 空格\旋转180" | Out-Null
 
-          $bitmap = New-Object System.Drawing.Bitmap 1800, 1100
+          $bitmap = [System.Drawing.Bitmap]::new(1800, 1100)
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
           $graphics.Clear([System.Drawing.Color]::White)
           $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-          $titleFont = New-Object System.Drawing.Font "Microsoft YaHei", 76, ([System.Drawing.FontStyle]::Bold)
-          $bodyFont = New-Object System.Drawing.Font "Microsoft YaHei", 64
+          $titleFont = [System.Drawing.Font]::new(
+            "Microsoft YaHei",
+            76,
+            [System.Drawing.FontStyle]::Bold
+          )
+          $bodyFont = [System.Drawing.Font]::new("Microsoft YaHei", 64)
           $brush = [System.Drawing.Brushes]::Black
           $graphics.DrawString("中华人民共和国居民身份证", $titleFont, $brush, 150, 120)
           $graphics.DrawString("姓名  赵安林", $bodyFont, $brush, 180, 350)
