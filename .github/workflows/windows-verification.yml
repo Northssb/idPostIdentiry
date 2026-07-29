@@ -66,7 +66,19 @@ jobs:
             Write-Host "::error title=WINDOWS_NORMAL_OCR::$message"
             throw "正常方向识别退出码不是0：$exitCode"
           }
-          python -c "import zipfile; p=r'测试 输出 空格\正常\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); w=z.read('xl/workbook.xml').decode(); assert '孙安宁' in s; assert '990000198210070038' in s; assert 'r=\"C2\" t=\"inlineStr\" s=\"2\"' in s; assert '识别结果' in w and '待人工复核' in w; print('WINDOWS_NORMAL_XLSX_OK')"
+          @'
+          import zipfile
+          path = r"测试 输出 空格\正常\识别结果.xlsx"
+          with zipfile.ZipFile(path) as archive:
+              sheet = archive.read("xl/worksheets/sheet1.xml").decode()
+              workbook = archive.read("xl/workbook.xml").decode()
+          assert "孙安宁" in sheet
+          assert "990000198210070038" in sheet
+          assert 'r="C2" t="inlineStr" s="2"' in sheet
+          assert "识别结果" in workbook
+          assert "待人工复核" in workbook
+          print("WINDOWS_NORMAL_XLSX_OK")
+          '@ | python -
 
       - name: 验证180度方向兜底
         shell: pwsh
@@ -83,4 +95,13 @@ jobs:
             Write-Host "::error title=WINDOWS_ROTATE180_OCR::$message"
             throw "180度方向识别退出码不是0：$exitCode"
           }
-          python -c "import zipfile; p=r'测试 输出 空格\旋转180\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); assert '孙安宁' in s; assert '990000198210070038' in s; assert '成功（增强重试）' in s; print('WINDOWS_ROTATE180_XLSX_OK')"
+          @'
+          import zipfile
+          path = r"测试 输出 空格\旋转180\识别结果.xlsx"
+          with zipfile.ZipFile(path) as archive:
+              sheet = archive.read("xl/worksheets/sheet1.xml").decode()
+          assert "孙安宁" in sheet
+          assert "990000198210070038" in sheet
+          assert "成功（增强重试）" in sheet
+          print("WINDOWS_ROTATE180_XLSX_OK")
+          '@ | python -
