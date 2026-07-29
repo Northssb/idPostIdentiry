@@ -42,12 +42,16 @@ jobs:
         shell: pwsh
         run: |
           $env:IDCARD_OCR_BACKEND = "tesseract"
-          python id_card_ocr.py `
+          $output = python id_card_ocr.py `
             --input-dir "测试 输入 空格\正常" `
             --output-dir "测试 输出 空格\正常" `
-            --output-name "识别结果.xlsx"
-          if ($LASTEXITCODE -ne 0) {
-            throw "正常方向识别退出码不是0：$LASTEXITCODE"
+            --output-name "识别结果.xlsx" 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $message = ($output -join " | ").Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error title=WINDOWS_NORMAL_OCR::$message"
+            throw "正常方向识别退出码不是0：$exitCode"
           }
           python -c "import zipfile; p=r'测试 输出 空格\正常\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); w=z.read('xl/workbook.xml').decode(); assert '孙安宁' in s; assert '990000198210070038' in s; assert 'r=\"C2\" t=\"inlineStr\" s=\"2\"' in s; assert '识别结果' in w and '待人工复核' in w; print('WINDOWS_NORMAL_XLSX_OK')"
 
@@ -55,11 +59,15 @@ jobs:
         shell: pwsh
         run: |
           $env:IDCARD_OCR_BACKEND = "tesseract"
-          python id_card_ocr.py `
+          $output = python id_card_ocr.py `
             --input-dir "测试 输入 空格\旋转180" `
             --output-dir "测试 输出 空格\旋转180" `
-            --output-name "识别结果.xlsx"
-          if ($LASTEXITCODE -ne 0) {
-            throw "180度方向识别退出码不是0：$LASTEXITCODE"
+            --output-name "识别结果.xlsx" 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $message = ($output -join " | ").Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error title=WINDOWS_ROTATE180_OCR::$message"
+            throw "180度方向识别退出码不是0：$exitCode"
           }
           python -c "import zipfile; p=r'测试 输出 空格\旋转180\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); assert '孙安宁' in s; assert '990000198210070038' in s; assert '成功（增强重试）' in s; print('WINDOWS_ROTATE180_XLSX_OK')"
