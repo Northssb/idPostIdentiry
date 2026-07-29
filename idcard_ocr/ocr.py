@@ -162,8 +162,13 @@ class TesseractBackend:
             check=False,
         )
         languages = set(completed.stdout.split())
-        if completed.returncode != 0 or "chi_sim" not in languages or "eng" not in languages:
-            raise OcrInitializationError("Tesseract 必须安装 chi_sim 和 eng 本地语言包")
+        if (
+            completed.returncode != 0
+            or "chi_sim" not in languages
+            or "eng" not in languages
+            or "osd" not in languages
+        ):
+            raise OcrInitializationError("Tesseract 必须安装 chi_sim、eng 和 osd 本地语言包")
 
     def _invoke(self, path: Path, page_mode: str, strategy: str) -> OcrResult:
         try:
