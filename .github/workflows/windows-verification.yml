@@ -33,38 +33,45 @@ jobs:
       - name: 生成正常和180度模拟身份证图片
         shell: powershell
         run: |
-          Add-Type -AssemblyName System.Drawing
-          New-Item -ItemType Directory -Force "测试 输入 空格\正常" | Out-Null
-          New-Item -ItemType Directory -Force "测试 输入 空格\旋转180" | Out-Null
+          $ErrorActionPreference = "Stop"
+          try {
+            Add-Type -AssemblyName System.Drawing
+            New-Item -ItemType Directory -Force "测试 输入 空格\正常" | Out-Null
+            New-Item -ItemType Directory -Force "测试 输入 空格\旋转180" | Out-Null
 
-          $bitmap = [System.Drawing.Bitmap]::new(1800, 1100)
-          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $graphics.Clear([System.Drawing.Color]::White)
-          $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-          $titleFont = [System.Drawing.Font]::new(
-            "Microsoft YaHei",
-            76,
-            [System.Drawing.FontStyle]::Bold
-          )
-          $bodyFont = [System.Drawing.Font]::new("Microsoft YaHei", 64)
-          $brush = [System.Drawing.Brushes]::Black
-          $graphics.DrawString("中华人民共和国居民身份证", $titleFont, $brush, 150, 120)
-          $graphics.DrawString("姓名  赵安林", $bodyFont, $brush, 180, 350)
-          $graphics.DrawString("公民身份号码  990000198008120011", $bodyFont, $brush, 180, 720)
-          $normalPath = Join-Path $PWD "测试 输入 空格\正常\身份证 正面.JPG"
-          $bitmap.Save($normalPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
-          $graphics.Dispose()
-          $titleFont.Dispose()
-          $bodyFont.Dispose()
-          $bitmap.Dispose()
+            $bitmap = [System.Drawing.Bitmap]::new(1800, 1100)
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            $graphics.Clear([System.Drawing.Color]::White)
+            $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+            $titleFont = [System.Drawing.Font]::new(
+              "Microsoft YaHei",
+              76,
+              [System.Drawing.FontStyle]::Bold
+            )
+            $bodyFont = [System.Drawing.Font]::new("Microsoft YaHei", 64)
+            $brush = [System.Drawing.Brushes]::Black
+            $graphics.DrawString("中华人民共和国居民身份证", $titleFont, $brush, 150, 120)
+            $graphics.DrawString("姓名  赵安林", $bodyFont, $brush, 180, 350)
+            $graphics.DrawString("公民身份号码  990000198008120011", $bodyFont, $brush, 180, 720)
+            $normalPath = Join-Path $PWD "测试 输入 空格\正常\身份证 正面.JPG"
+            $bitmap.Save($normalPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+            $graphics.Dispose()
+            $titleFont.Dispose()
+            $bodyFont.Dispose()
+            $bitmap.Dispose()
 
-          $rotated = [System.Drawing.Image]::FromFile($normalPath)
-          $rotated.RotateFlip([System.Drawing.RotateFlipType]::Rotate180FlipNone)
-          $rotated.Save(
-            (Join-Path $PWD "测试 输入 空格\旋转180\身份证 旋转180.JPG"),
-            [System.Drawing.Imaging.ImageFormat]::Jpeg
-          )
-          $rotated.Dispose()
+            $rotated = [System.Drawing.Image]::FromFile($normalPath)
+            $rotated.RotateFlip([System.Drawing.RotateFlipType]::Rotate180FlipNone)
+            $rotated.Save(
+              (Join-Path $PWD "测试 输入 空格\旋转180\身份证 旋转180.JPG"),
+              [System.Drawing.Imaging.ImageFormat]::Jpeg
+            )
+            $rotated.Dispose()
+          } catch {
+            $message = $_.Exception.ToString().Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error title=WINDOWS_IMAGE_GENERATION::$message"
+            throw
+          }
 
       - name: 验证正常方向识别和 Excel 文本格式
         shell: powershell
