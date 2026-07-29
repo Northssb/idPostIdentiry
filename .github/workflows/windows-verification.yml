@@ -38,17 +38,17 @@ jobs:
           Copy-Item ".github\windows-fixtures\normal.jpg" "测试 输入 空格\正常\身份证 正面.JPG"
           Copy-Item ".github\windows-fixtures\rotate180.jpg" "测试 输入 空格\旋转180\身份证 旋转180.JPG"
 
-      - name: 诊断 Windows OCR 后端
+      - name: 诊断 Windows 批处理和导出
         shell: pwsh
         run: |
           $env:IDCARD_OCR_BACKEND = "tesseract"
-          $output = python -c "from pathlib import Path; from idcard_ocr.ocr import create_ocr_backend; backend=create_ocr_backend(); result=backend.recognize(Path(r'测试 输入 空格\正常\身份证 正面.JPG')); assert result.name == '孙安宁'; assert result.id_number == '990000198210070038'" 2>&1
+          $output = python -c "from pathlib import Path; from idcard_ocr.core import BatchProcessor, export_xlsx, resolve_output_path, scan_images; from idcard_ocr.ocr import create_ocr_backend; source=Path(r'测试 输入 空格\正常'); target=resolve_output_path(Path(r'诊断 输出 空格'), '诊断结果.xlsx', False); backend=create_ocr_backend(); rows, summary=BatchProcessor(source, backend).process(scan_images(source)); assert summary.succeeded == 1; export_xlsx(target, rows); assert target.is_file()" 2>&1
           $exitCode = $LASTEXITCODE
           $output | Write-Host
           if ($exitCode -ne 0) {
             $message = ($output -join " | ").Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
-            Write-Host "::error title=WINDOWS_BACKEND_TRACE::$message"
-            throw "Windows OCR 后端诊断失败：$exitCode"
+            Write-Host "::error title=WINDOWS_PIPELINE_TRACE::$message"
+            throw "Windows 批处理或导出诊断失败：$exitCode"
           }
 
       - name: 验证正常方向识别和 Excel 文本格式
