@@ -70,6 +70,11 @@ def normalize_name(value: str) -> str:
     return value.strip()
 
 
+def validate_name(value: str) -> bool:
+    character = r"[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]"
+    return re.fullmatch(rf"{character}+(?:·{character}+)*", value) is not None
+
+
 def normalize_id_number(value: str) -> str:
     compact = "".join(value.split())
     if compact.endswith("x"):
@@ -180,6 +185,9 @@ class BatchProcessor:
                 id_number = normalize_id_number(raw.id_number)
                 if not name:
                     row = ResultRow(source, "", "", "失败：未识别到姓名")
+                    failed += 1
+                elif not validate_name(name):
+                    row = ResultRow(source, "", "", "失败：姓名格式无效")
                     failed += 1
                 elif not id_number:
                     row = ResultRow(source, "", "", "失败：未识别到身份证号")
