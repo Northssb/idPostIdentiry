@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
 
       - name: 安装本地 Tesseract
-        shell: powershell
+        shell: pwsh
         run: |
           choco install tesseract --yes --no-progress
           $install = "C:\Program Files\Tesseract-OCR"
@@ -31,7 +31,7 @@ jobs:
           $install | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: 准备正常和180度模拟身份证图片
-        shell: powershell
+        shell: pwsh
         run: |
           New-Item -ItemType Directory -Force "测试 输入 空格\正常" | Out-Null
           New-Item -ItemType Directory -Force "测试 输入 空格\旋转180" | Out-Null
@@ -39,7 +39,7 @@ jobs:
           Copy-Item ".github\windows-fixtures\rotate180.jpg" "测试 输入 空格\旋转180\身份证 旋转180.JPG"
 
       - name: 验证正常方向识别和 Excel 文本格式
-        shell: powershell
+        shell: pwsh
         run: |
           $env:IDCARD_OCR_BACKEND = "tesseract"
           python id_card_ocr.py `
@@ -52,7 +52,7 @@ jobs:
           python -c "import zipfile; p=r'测试 输出 空格\正常\识别结果.xlsx'; z=zipfile.ZipFile(p); s=z.read('xl/worksheets/sheet1.xml').decode(); w=z.read('xl/workbook.xml').decode(); assert '孙安宁' in s; assert '990000198210070038' in s; assert 'r=\"C2\" t=\"inlineStr\" s=\"2\"' in s; assert '识别结果' in w and '待人工复核' in w; print('WINDOWS_NORMAL_XLSX_OK')"
 
       - name: 验证180度方向兜底
-        shell: powershell
+        shell: pwsh
         run: |
           $env:IDCARD_OCR_BACKEND = "tesseract"
           python id_card_ocr.py `
