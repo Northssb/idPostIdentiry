@@ -240,8 +240,11 @@ def _worksheet_xml(rows: Iterable[object]) -> bytes:
         + "</row>"
     ]
     last_row = 1
-    for last_row, row in enumerate(rows, start=2):
+    for row in rows:
         _, name, id_number, _ = row.as_tuple()
+        if not id_number or not name:
+            continue
+        last_row += 1
         values = (id_number, name)
         sheet_rows.append(
             f'<row r="{last_row}">'
