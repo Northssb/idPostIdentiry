@@ -233,77 +233,39 @@ def _inline_cell(reference: str, value: str, style: int | None = None) -> str:
 
 
 def _worksheet_xml(rows: Iterable[object]) -> bytes:
-    headers = ("来源文件", "姓名", "身份证号", "识别状态")
+    headers = ("身份证号码", "姓名")
     sheet_rows = [
         '<row r="1">'
-        + "".join(_inline_cell(f"{column}1", value, 1) for column, value in zip("ABCD", headers))
+        + "".join(_inline_cell(f"{column}1", value, 1) for column, value in zip("AB", headers))
         + "</row>"
     ]
     last_row = 1
     for last_row, row in enumerate(rows, start=2):
-        values = row.as_tuple()
+        _, name, id_number, _ = row.as_tuple()
+        values = (id_number, name)
         sheet_rows.append(
             f'<row r="{last_row}">'
             + "".join(
                 _inline_cell(
                     f"{column}{last_row}",
                     str(value),
-                    2 if column == "C" else None,
+                    2 if column == "A" else None,
                 )
-                for column, value in zip("ABCD", values)
+                for column, value in zip("AB", values)
             )
             + "</row>"
         )
     xml = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        f'<dimension ref="A1:D{last_row}"/>'
+        f'<dimension ref="A1:B{last_row}"/>'
         '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" '
         'activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-        '<cols><col min="1" max="1" width="36" customWidth="1"/>'
+        '<cols><col min="1" max="1" width="24" customWidth="1"/>'
         '<col min="2" max="2" width="18" customWidth="1"/>'
-        '<col min="3" max="3" width="24" customWidth="1"/>'
-        '<col min="4" max="4" width="44" customWidth="1"/></cols>'
+        '</cols>'
         '<sheetData>' + "".join(sheet_rows) + '</sheetData>'
-        f'<autoFilter ref="A1:D{last_row}"/>'
-        '</worksheet>'
-    )
-    return xml.encode("utf-8")
-
-
-def _review_worksheet_xml(rows: Iterable[object]) -> bytes:
-    headers = ("来源文件", "失败原因", "建议操作")
-    review_rows: list[tuple[str, str, str]] = []
-    for row in rows:
-        source, _, _, status = row.as_tuple()
-        if status.startswith("失败："):
-            review_rows.append((source, status, "检查图片质量后重新拍摄或人工录入"))
-        elif status.startswith("重复且姓名冲突"):
-            review_rows.append((source, status, "核对当前图片与首次保留记录"))
-
-    sheet_rows = [
-        '<row r="1">'
-        + "".join(_inline_cell(f"{column}1", value, 1) for column, value in zip("ABC", headers))
-        + "</row>"
-    ]
-    last_row = 1
-    for last_row, values in enumerate(review_rows, start=2):
-        sheet_rows.append(
-            f'<row r="{last_row}">'
-            + "".join(_inline_cell(f"{column}{last_row}", value) for column, value in zip("ABC", values))
-            + "</row>"
-        )
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        f'<dimension ref="A1:C{last_row}"/>'
-        '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" '
-        'activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-        '<cols><col min="1" max="1" width="36" customWidth="1"/>'
-        '<col min="2" max="2" width="48" customWidth="1"/>'
-        '<col min="3" max="3" width="42" customWidth="1"/></cols>'
-        '<sheetData>' + "".join(sheet_rows) + '</sheetData>'
-        f'<autoFilter ref="A1:C{last_row}"/>'
+        f'<autoFilter ref="A1:B{last_row}"/>'
         '</worksheet>'
     )
     return xml.encode("utf-8")
@@ -328,7 +290,6 @@ def export_xlsx(target: Path, rows: Iterable[object]) -> None:
                 '<Default Extension="xml" ContentType="application/xml"/>'
                 '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
                 '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-                '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
                 '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
                 '</Types>',
             )
@@ -344,20 +305,17 @@ def export_xlsx(target: Path, rows: Iterable[object]) -> None:
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
                 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-                '<sheets><sheet name="识别结果" sheetId="1" r:id="rId1"/>'
-                '<sheet name="待人工复核" sheetId="2" r:id="rId2"/></sheets></workbook>',
+                '<sheets><sheet name="识别结果" sheetId="1" r:id="rId1"/></sheets></workbook>',
             )
             archive.writestr(
                 "xl/_rels/workbook.xml.rels",
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                 '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
-                '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
                 '</Relationships>',
             )
             archive.writestr("xl/worksheets/sheet1.xml", _worksheet_xml(result_rows))
-            archive.writestr("xl/worksheets/sheet2.xml", _review_worksheet_xml(result_rows))
             archive.writestr(
                 "xl/styles.xml",
                 '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
