@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import tkinter as tk
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Callable
+from typing import Callable, Sequence
 
 from .core import (
     BatchProcessor,
@@ -246,9 +247,18 @@ class IdCardOcrApp:
         messagebox.showerror("识别失败", message)
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments == ["--self-test"]:
+        backend = create_ocr_backend()
+        try:
+            return 0
+        finally:
+            close = getattr(backend, "close", None)
+            if callable(close):
+                close()
+
     root = tk.Tk()
     IdCardOcrApp(root)
     root.mainloop()
     return 0
-
