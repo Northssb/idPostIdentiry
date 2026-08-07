@@ -12,6 +12,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -323,6 +324,13 @@ def _prepare_tesseract_image(
 
 class MacOSVisionBackend:
     def __init__(self) -> None:
+        bundle_root = getattr(sys, "_MEIPASS", None)
+        bundled_executable = Path(bundle_root) / "vision_ocr" if bundle_root else None
+        if bundled_executable is not None and bundled_executable.is_file():
+            self._temporary_directory = None
+            self._executable = bundled_executable
+            return
+
         compiler = shutil.which("clang")
         if compiler is None:
             raise OcrInitializationError("macOS 系统缺少 Clang 编译器，无法启动本地 Vision OCR")
@@ -414,7 +422,19 @@ class MacOSVisionBackend:
 
 class TesseractBackend:
     def __init__(self) -> None:
-        self._executable = shutil.which("tesseract")
+        self._environment = os.environ.copy()
+        bundle_root = getattr(sys, "_MEIPASS", None)
+        bundled_directory = Path(bundle_root) / "tesseract" if bundle_root else None
+        bundled_executable = (
+            bundled_directory / "tesseract.exe" if bundled_directory is not None else None
+        )
+        if bundled_executable is not None and bundled_executable.is_file():
+            self._executable = str(bundled_executable)
+            tessdata = bundled_directory / "tessdata"
+            if tessdata.is_dir():
+                self._environment["TESSDATA_PREFIX"] = str(tessdata)
+        else:
+            self._executable = shutil.which("tesseract")
         if self._executable is None:
             raise OcrInitializationError("系统未安装 Tesseract，无法启动本地 OCR")
         completed = subprocess.run(
@@ -425,6 +445,7 @@ class TesseractBackend:
             text=True,
             timeout=30,
             check=False,
+            env=self._environment,
         )
         languages = set(completed.stdout.split())
         if (
@@ -461,6 +482,7 @@ class TesseractBackend:
             "stderr": subprocess.PIPE,
             "timeout": 60,
             "check": False,
+            "env": self._environment,
         }
         if prepared_image is None:
             run_arguments["stdin"] = subprocess.DEVNULL

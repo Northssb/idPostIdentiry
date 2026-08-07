@@ -4,3 +4,8 @@ __pycache__/
 .idea/
 *.xlsx
 .*.tmp
+.build-venv/
+.build-venv-macos/
+build/
+build_assets/
+dist/

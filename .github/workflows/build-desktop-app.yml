@@ -1,0 +1,62 @@
+name: 构建身份证识别桌面App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/fixPlan_0731
+    paths:
+      - "id_card_ocr_app.pyw"
+      - "idcard_ocr/**"
+      - "desktop_app.spec"
+      - "scripts/build_macos.sh"
+      - "scripts/build_windows.ps1"
+      - ".github/workflows/build-desktop-app.yml"
+
+jobs:
+  build-macos:
+    name: 构建macOS App
+    runs-on: macos-14
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 配置Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 构建App
+        run: PYTHON=python3 ./scripts/build_macos.sh
+      - name: 压缩App
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/身份证识别.app" "dist/身份证识别-macOS.zip"
+      - name: 上传macOS安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: 身份证识别-macOS
+          path: dist/身份证识别-macOS.zip
+
+  build-windows:
+    name: 构建Windows App
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 配置Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装Tesseract
+        shell: powershell
+        run: choco install tesseract --no-progress -y
+      - name: 构建App
+        shell: powershell
+        run: .\scripts\build_windows.ps1
+      - name: 压缩App
+        shell: powershell
+        run: Compress-Archive -Path "dist\身份证识别\*" -DestinationPath "dist\身份证识别-Windows.zip"
+      - name: 上传Windows安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: 身份证识别-Windows
+          path: dist/身份证识别-Windows.zip
