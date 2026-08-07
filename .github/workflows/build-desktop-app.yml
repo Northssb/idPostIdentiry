@@ -29,7 +29,11 @@ jobs:
       - name: 构建App
         run: PYTHON=python3 ./scripts/build_macos.sh
       - name: 验证macOS App启动和内置OCR
-        run: '"dist/身份证识别.app/Contents/MacOS/身份证识别" --self-test'
+        run: |
+          mkdir -p self-test-input self-test-output
+          cp "test_data/id_card_samples_100/模拟身份证_001.jpg" self-test-input/
+          "dist/身份证识别.app/Contents/MacOS/身份证识别" --self-test "$PWD/self-test-input" "$PWD/self-test-output"
+          test -f "self-test-output/身份证识别自检.xlsx"
       - name: 压缩App
         run: ditto -c -k --sequesterRsrc --keepParent "dist/身份证识别.app" "dist/身份证识别-macOS.zip"
       - name: 上传macOS安装包
@@ -70,7 +74,12 @@ jobs:
         run: .\scripts\build_windows.ps1
       - name: 验证Windows App启动和内置OCR
         shell: pwsh
-        run: '& "dist\身份证识别\身份证识别.exe" --self-test'
+        run: |
+          New-Item -ItemType Directory -Path "self-test-input", "self-test-output" | Out-Null
+          Copy-Item "test_data\id_card_samples_100\模拟身份证_001.jpg" "self-test-input\"
+          & "dist\身份证识别\身份证识别.exe" --self-test (Resolve-Path "self-test-input") (Resolve-Path "self-test-output")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "self-test-output\身份证识别自检.xlsx")) { exit 1 }
       - name: 压缩App
         shell: pwsh
         run: Compress-Archive -Path "dist\身份证识别\*" -DestinationPath "dist\身份证识别-Windows.zip"

@@ -257,6 +257,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             close = getattr(backend, "close", None)
             if callable(close):
                 close()
+    if len(arguments) == 3 and arguments[0] == "--self-test":
+        result = run_recognition_job(
+            Path(arguments[1]),
+            Path(arguments[2]),
+            "身份证识别自检.xlsx",
+            True,
+        )
+        return 0 if result.summary.succeeded > 0 else 1
 
     root = tk.Tk()
     IdCardOcrApp(root)
