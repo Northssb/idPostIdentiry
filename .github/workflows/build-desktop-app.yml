@@ -47,13 +47,27 @@ jobs:
         with:
           python-version: "3.11"
       - name: 安装Tesseract
-        shell: powershell
+        shell: pwsh
         run: choco install tesseract --no-progress -y
+      - name: 验证Windows构建脚本语法
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path ".\scripts\build_windows.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error file=scripts/build_windows.ps1::$($_.Message)" }
+            exit 1
+          }
       - name: 构建App
-        shell: powershell
+        shell: pwsh
         run: .\scripts\build_windows.ps1
       - name: 压缩App
-        shell: powershell
+        shell: pwsh
         run: Compress-Archive -Path "dist\身份证识别\*" -DestinationPath "dist\身份证识别-Windows.zip"
       - name: 上传Windows安装包
         uses: actions/upload-artifact@v4
