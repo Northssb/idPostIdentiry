@@ -21,12 +21,8 @@ Copy-Item (Join-Path $TesseractSource "*") $TesseractTarget -Recurse -Force
 
 $Tessdata = Join-Path $TesseractTarget "tessdata"
 New-Item -ItemType Directory -Path $Tessdata -Force | Out-Null
-Invoke-WebRequest \
-    "https://github.com/tesseract-ocr/tessdata_fast/raw/main/chi_sim.traineddata" \
-    -OutFile (Join-Path $Tessdata "chi_sim.traineddata")
-Invoke-WebRequest \
-    "https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata" \
-    -OutFile (Join-Path $Tessdata "osd.traineddata")
+Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata_fast/raw/main/chi_sim.traineddata" -OutFile (Join-Path $Tessdata "chi_sim.traineddata")
+Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata" -OutFile (Join-Path $Tessdata "osd.traineddata")
 
 & .\.build-venv\Scripts\python.exe -m PyInstaller --noconfirm --clean desktop_app.spec
 
