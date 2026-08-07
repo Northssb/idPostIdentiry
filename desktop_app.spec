@@ -3,9 +3,6 @@
 import sys
 from pathlib import Path
 
-from PyInstaller.building.datastruct import Tree
-
-
 project_root = Path(SPECPATH)
 binaries = []
 datas = []
@@ -13,10 +10,7 @@ datas = []
 if sys.platform == "darwin":
     binaries.append((str(project_root / "build_assets" / "vision_ocr"), "."))
 elif sys.platform == "win32":
-    datas += Tree(
-        str(project_root / "build_assets" / "tesseract"),
-        prefix="tesseract",
-    )
+    datas.append((str(project_root / "build_assets" / "tesseract"), "tesseract"))
 
 a = Analysis(
     ["id_card_ocr_app.pyw"],
