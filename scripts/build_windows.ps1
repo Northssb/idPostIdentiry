@@ -37,6 +37,16 @@ New-Item -ItemType Directory -Path $Tessdata -Force | Out-Null
 Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata_fast/raw/main/chi_sim.traineddata" -OutFile (Join-Path $Tessdata "chi_sim.traineddata")
 Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata" -OutFile (Join-Path $Tessdata "osd.traineddata")
 
-& .\.build-venv\Scripts\python.exe -m PyInstaller --noconfirm --clean desktop_app.spec
+if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+$BuildOutput = & .\.build-venv\Scripts\python.exe -m PyInstaller --noconfirm --clean desktop_app.spec 2>&1
+$BuildExitCode = $LASTEXITCODE
+$BuildOutput | ForEach-Object { Write-Host $_ }
+if ($BuildExitCode -ne 0) {
+    $BuildTail = ($BuildOutput | Select-Object -Last 8 | ForEach-Object { "$_" }) -join " | "
+    Write-Host "::error file=desktop_app.spec::$BuildTail"
+    exit $BuildExitCode
+}
 
 Write-Host "构建完成：$ProjectRoot\dist\身份证识别\身份证识别.exe"

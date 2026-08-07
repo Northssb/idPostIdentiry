@@ -16,7 +16,6 @@ elif sys.platform == "win32":
     datas += Tree(
         str(project_root / "build_assets" / "tesseract"),
         prefix="tesseract",
-        typecode="BINARY",
     )
 
 a = Analysis(
